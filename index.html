@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Earthenware Shift Machine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#DCE3DC; --surface:#EEF1EC; --ink:#2E2521; --muted:#6B605A;
+  --glaze:#1F3A7A; --glaze-ink:#F2F5FA; --tenmoku:#8A4F1A; --line:#B9C2B9; --bad:#9B2C2C;
+  --sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1C1916; --surface:#26221E; --ink:#ECE6DF; --muted:#A89E95;
+    --glaze:#7FB59A; --glaze-ink:#10201A; --tenmoku:#E0A061; --line:#3B3530; --bad:#E07A7A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1C1916; --surface:#26221E; --ink:#ECE6DF; --muted:#A89E95;
+  --glaze:#7FB59A; --glaze-ink:#10201A; --tenmoku:#E0A061; --line:#3B3530; --bad:#E07A7A;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.45}
+main{max-width:980px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:clamp(1.6rem,5vw,2.4rem);font-weight:700;letter-spacing:-0.02em;margin:0 0 4px;line-height:1.1}
+.sub{color:var(--muted);margin:0 0 22px;max-width:60ch}
+h2{font-size:1.05rem;font-weight:600;margin:0 0 10px}
+
+/* The accumulator: the one bold element */
+.acc{background:var(--surface);border-radius:18px;padding:18px 16px 16px;margin-bottom:16px}
+.bits{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.bit{aspect-ratio:1/1.15;border-radius:10px 10px 14px 14px;border:2px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:var(--mono);font-weight:600;font-size:clamp(1.1rem,5vw,2rem);color:var(--muted);
+  transition:background .18s,color .18s,transform .18s}
+.bit small{font-family:var(--sans);font-weight:500;font-size:.62rem;opacity:.75;margin-top:2px}
+.bit.on{background:var(--glaze);border-color:var(--glaze);color:var(--glaze-ink)}
+.bit.shifted{transform:translateX(-4px)}
+.carry{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.stat{display:flex;gap:6px;align-items:baseline;background:var(--bg);padding:6px 10px;border-radius:8px}
+.stat span{color:var(--muted);font-size:.85rem}
+.stat b{font-family:var(--mono);font-weight:600}
+.flag-on{color:var(--tenmoku)}
+.status{margin-left:auto;font-weight:600}
+.status.halt{color:var(--tenmoku)} .status.err{color:var(--bad)}
+
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:18px}
+button,select{font:inherit;font-weight:600;border-radius:10px;border:2px solid var(--ink);background:transparent;color:var(--ink);padding:9px 14px;cursor:pointer}
+button.primary{background:var(--ink);color:var(--bg)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--glaze);outline-offset:2px}
+.speed{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.9rem}
+.speed input{accent-color:var(--glaze)}
+
+.grid{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:820px){.grid{grid-template-columns:1fr 1fr}}
+.panel{background:var(--surface);border-radius:14px;padding:14px}
+textarea{width:100%;min-height:300px;resize:vertical;font-family:var(--mono);font-size:.88rem;line-height:1.5;
+  background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;tab-size:8}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.row select{flex:1;min-width:160px;font-weight:500}
+.err-msg{color:var(--bad);font-size:.9rem;margin-top:8px;min-height:1.2em}
+
+.mem{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+@media (min-width:480px){.mem{grid-template-columns:repeat(8,1fr)}}
+.cell{border:1px solid var(--line);border-radius:7px;padding:4px 5px;font-family:var(--mono);font-size:.72rem;min-width:0;background:var(--bg)}
+.cell .ad{color:var(--muted);font-size:.62rem}
+.cell .hx{font-weight:600;font-size:.85rem}
+.cell .ds{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell.pc{border:2px solid var(--glaze);background:var(--surface)}
+.cell.wrote{border:2px solid var(--tenmoku)}
+
+.isa{width:100%;border-collapse:collapse;font-size:.88rem}
+.isa td{padding:5px 6px;border-top:1px solid var(--line);vertical-align:top}
+.isa td:first-child{font-family:var(--mono);font-weight:600;white-space:nowrap}
+.isa td:nth-child(2){font-family:var(--mono);color:var(--muted);white-space:nowrap}
+.log{font-family:var(--mono);font-size:.76rem;max-height:220px;overflow:auto;background:var(--bg);border-radius:8px;padding:8px;white-space:pre;color:var(--muted)}
+.scroll{overflow-x:auto}
+@media (prefers-reduced-motion:reduce){.bit{transition:none}.bit.shifted{transform:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Earthenware Shift Machine</h1>
+  <p class="sub">An 8-bit computer built around ×2. Every shift moves the accumulator one bit left. Load a program, then step through it and watch the bits move.</p>
+
+  <section class="acc" aria-label="Accumulator">
+    <div class="bits" id="bits"></div>
+    <div class="carry">
+      <div class="stat"><span>A</span><b id="aDec">0</b></div>
+      <div class="stat"><span>PC</span><b id="pc">00</b></div>
+      <div class="stat"><span>Carry</span><b id="cf">0</b></div>
+      <div class="stat"><span>Zero</span><b id="zf">1</b></div>
+      <div class="stat"><span>Steps</span><b id="steps">0</b></div>
+      <div class="status" id="status" role="status">Ready</div>
+    </div>
+  </section>
+
+  <div class="controls">
+    <button class="primary" id="runBtn">Run</button>
+    <button id="stepBtn">Step</button>
+    <button id="resetBtn">Reset</button>
+    <label class="speed">Speed <input type="range" id="speed" min="1" max="20" value="4" aria-label="Steps per second"><span id="speedVal">4/s</span></label>
+  </div>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>Program</h2>
+      <div class="row">
+        <select id="examples" aria-label="Example program">
+          <option value="boot">Boot check: ×2 must give 2</option>
+          <option value="ring">Ring counter: 1, 2, 4 … 128</option>
+          <option value="mul">Multiply 6 × 7 by repeated adding</option>
+          <option value="shiftmul">Multiply 13 × 10 with shift-and-add</option>
+        </select>
+        <button id="loadBtn">Load program</button>
+      </div>
+      <textarea id="src" spellcheck="false" aria-label="Assembly source"></textarea>
+      <div class="err-msg" id="err"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Memory (32 bytes, program and data share it)</h2>
+      <div class="mem" id="mem"></div>
+      <h2 style="margin-top:16px">Trace</h2>
+      <div class="log" id="log"></div>
+    </section>
+  </div>
+
+  <section class="panel" style="margin-top:16px">
+    <h2>Instruction set</h2>
+    <p class="sub" style="margin:0 0 10px">Each instruction is one byte: 3 bits of opcode, then a 5-bit address.</p>
+    <div class="scroll">
+    <table class="isa">
+      <tr><td>HALT</td><td>000</td><td>Stop the machine.</td></tr>
+      <tr><td>LDA a</td><td>001</td><td>Load memory[a] into A.</td></tr>
+      <tr><td>STO a</td><td>010</td><td>Store A into memory[a].</td></tr>
+      <tr><td>ADD a</td><td>011</td><td>A = A + memory[a]. Carry is set on overflow. Add 255 to subtract 1.</td></tr>
+      <tr><td>SHL</td><td>100</td><td>A = A × 2 (shift left). The bit that falls off goes to carry.</td></tr>
+      <tr><td>JZ a</td><td>101</td><td>Jump to a if A is zero.</td></tr>
+      <tr><td>JMP a</td><td>110</td><td>Jump to a.</td></tr>
+      <tr><td>JC a</td><td>111</td><td>Jump to a if carry is set.</td></tr>
+      <tr><td>DB n</td><td></td><td>Put the value n (0–255, or negative) in memory. Labels end with a colon; comments start with a semicolon.</td></tr>
+    </table>
+    </div>
+  </section>
+</main>
+
+<script>
+const EXAMPLES = {
+boot:
+`; Boot check: shift 1 left once and confirm we have 2.
+; If we do, write 1 to "ready" and the system is go.
+start:  LDA one
+        SHL          ; x2 = shift left
+        STO out
+        ADD neg2     ; out - 2
+        JZ  ok       ; zero means we have 2
+        HALT         ; fail: ready stays 0
+ok:     LDA one
+        STO ready
+        HALT
+one:    DB 1
+neg2:   DB -2
+out:    DB 0
+ready:  DB 0`,
+ring:
+`; Ring counter: a single lit bit walks left.
+; After 8 shifts it falls off into carry and A hits zero.
+        LDA one
+loop:   STO out
+        SHL
+        JZ  done
+        JMP loop
+done:   HALT
+one:    DB 1
+out:    DB 0`,
+mul:
+`; 6 x 7 by adding x to result, count times.
+loop:   LDA count
+        JZ  done
+        ADD minus1
+        STO count
+        LDA result
+        ADD x
+        STO result
+        JMP loop
+done:   HALT
+x:      DB 6
+count:  DB 7
+result: DB 0
+minus1: DB -1`,
+shiftmul:
+`; 13 x 10 with shift-and-add, reading y from the top bit down.
+; Each round: result x2, then y x2. If a 1 falls into carry, add x.
+loop:   LDA left
+        JZ  done
+        ADD minus1
+        STO left
+        LDA result
+        SHL          ; result x2
+        STO result
+        LDA y
+        SHL          ; y x2, top bit -> carry
+        STO y
+        JC  addx
+        JMP loop
+addx:   LDA result
+        ADD x
+        STO result
+        JMP loop
+done:   HALT
+x:      DB 13
+y:      DB 10
+result: DB 0
+left:   DB 8
+minus1: DB -1`
+};
+
+const OPS = {HALT:0,LDA:1,STO:2,ADD:3,SHL:4,JZ:5,JMP:6,JC:7};
+const NAMES = ['HALT','LDA','STO','ADD','SHL','JZ','JMP','JC'];
+const NOARG = new Set(['HALT','SHL']);
+
+let image = new Array(32).fill(0), labelsAt = {}, kindAt = {};
+let m, A, PC, C, halted, steps, lastWrite = -1, timer = null, error = false;
+
+const $ = id => document.getElementById(id);
+
+function assemble(src){
+  const lines = src.split('\n'), labels = {}, items = [];
+  let addr = 0;
+  for (let i = 0; i < lines.length; i++){
+    const raw = lines[i].split(';')[0].trim();
+    if (!raw) continue;
+    const mm = raw.match(/^(?:([A-Za-z_]\w*):)?\s*(.*)$/);
+    const label = mm[1], rest = mm[2].trim();
+    if (label){
+      if (label in labels) throw new Error(`Line ${i+1}: the label "${label}" is defined twice.`);
+      labels[label] = addr;
+    }
+    if (!rest) continue;
+    const parts = rest.split(/\s+/);
+    const op = parts[0].toUpperCase();
+    if (op !== 'DB' && !(op in OPS)) throw new Error(`Line ${i+1}: "${parts[0]}" is not an instruction. Use one from the table below.`);
+    items.push({line:i+1, op, arg:parts[1], addr, label});
+    addr++;
+    if (addr > 32) throw new Error(`Line ${i+1}: the program is over 32 bytes. Shorten it to fit memory.`);
+  }
+  const mem = new Array(32).fill(0), lab = {}, kind = {};
+  for (const [k,v] of Object.entries(labels)) lab[v] = lab[v] ? lab[v]+','+k : k;
+  const val = (tok, line) => {
+    if (tok === undefined) throw new Error(`Line ${line}: this instruction needs an address or label.`);
+    if (tok in labels) return labels[tok];
+    const n = Number(tok);
+    if (Number.isInteger(n)) return n;
+    throw new Error(`Line ${line}: "${tok}" is not a defined label or a number.`);
+  };
+  for (const it of items){
+    if (it.op === 'DB'){
+      const n = val(it.arg, it.line);
+      if (n < -128 || n > 255) throw new Error(`Line ${it.line}: DB values must be between -128 and 255.`);
+      mem[it.addr] = n & 255; kind[it.addr] = 'data';
+    } else {
+      let a = 0;
+      if (!NOARG.has(it.op)){
+        a = val(it.arg, it.line);
+        if (a < 0 || a > 31) throw new Error(`Line ${it.line}: addresses run from 0 to 31.`);
+      }
+      mem[it.addr] = (OPS[it.op] << 5) | a; kind[it.addr] = 'code';
+    }
+  }
+  return {mem, lab, kind};
+}
+
+function disasm(b){
+  const op = b >> 5, a = b & 31;
+  return NOARG.has(NAMES[op]) ? NAMES[op] : `${NAMES[op]} ${a}`;
+}
+const hex = n => n.toString(16).toUpperCase().padStart(2,'0');
+const bin = n => n.toString(2).padStart(8,'0');
+
+function reset(){
+  stop();
+  m = image.slice(); A = 0; PC = 0; C = 0; halted = false; steps = 0; lastWrite = -1; error = false;
+  $('log').textContent = '';
+  setStatus('Ready','');
+  render(false);
+}
+
+function step(){
+  if (halted) return false;
+  if (steps >= 2000){ halted = true; setStatus('Stopped after 2000 steps. Check for an endless loop.','err'); render(false); return false; }
+  const at = PC, ir = m[PC], op = ir >> 5, a = ir & 31;
+  PC = (PC + 1) & 31; lastWrite = -1;
+  let shifted = false;
+  switch(op){
+    case 0: halted = true; break;
+    case 1: A = m[a]; break;
+    case 2: m[a] = A; lastWrite = a; break;
+    case 3: { const s = A + m[a]; C = s > 255 ? 1 : 0; A = s & 255; break; }
+    case 4: C = (A >> 7) & 1; A = (A << 1) & 255; shifted = true; break;
+    case 5: if (A === 0) PC = a; break;
+    case 6: PC = a; break;
+    case 7: if (C) PC = a; break;
+  }
+  steps++;
+  log(`${hex(at)}  ${disasm(ir).padEnd(8)} A=${bin(A)} (${String(A).padStart(3)})  C=${C}`);
+  if (halted) setStatus(haltMessage(),'halt');
+  render(shifted);
+  return !halted;
+}
+
+function haltMessage(){
+  const named = n => { for (const [ad,l] of Object.entries(labelsAt)) if (l.split(',').includes(n)) return m[ad]; };
+  if (named('ready') !== undefined) return named('ready') === 1 ? 'Halted. We have 2: system is go.' : 'Halted. Boot check failed.';
+  if (named('result') !== undefined) return `Halted. result = ${named('result')}`;
+  return 'Halted.';
+}
+
+function log(line){
+  const el = $('log');
+  const lines = (el.textContent ? el.textContent + '\n' : '') + line;
+  const arr = lines.split('\n');
+  el.textContent = arr.slice(-300).join('\n');
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStatus(t, cls){ const s = $('status'); s.textContent = t; s.className = 'status ' + cls; }
+
+function render(shifted){
+  const bits = $('bits');
+  if (!bits.children.length){
+    for (let i = 7; i >= 0; i--){
+      const d = document.createElement('div');
+      d.className = 'bit';
+      d.innerHTML = `<span></span><small>${1<<i}</small>`;
+      bits.appendChild(d);
+    }
+  }
+  [...bits.children].forEach((d, idx) => {
+    const i = 7 - idx, on = (A >> i) & 1;
+    d.firstChild.textContent = on;
+    d.classList.toggle('on', !!on);
+    d.classList.toggle('shifted', shifted);
+  });
+  if (shifted) setTimeout(() => [...bits.children].forEach(d => d.classList.remove('shifted')), 160);
+  $('aDec').textContent = A;
+  $('pc').textContent = hex(PC);
+  $('cf').textContent = C; $('cf').className = C ? 'flag-on' : '';
+  $('zf').textContent = A === 0 ? 1 : 0; $('zf').className = A === 0 ? 'flag-on' : '';
+  $('steps').textContent = steps;
+
+  const mem = $('mem');
+  if (!mem.children.length){
+    for (let i = 0; i < 32; i++){
+      const c = document.createElement('div'); c.className = 'cell';
+      c.innerHTML = '<div class="ad"></div><div class="hx"></div><div class="ds"></div>';
+      mem.appendChild(c);
+    }
+  }
+  [...mem.children].forEach((c, i) => {
+    c.classList.toggle('pc', i === PC && !halted);
+    c.classList.toggle('wrote', i === lastWrite);
+    c.children[0].textContent = hex(i) + (labelsAt[i] ? ' ' + labelsAt[i] : '');
+    c.children[1].textContent = hex(m[i]);
+    c.children[2].textContent = kindAt[i] === 'code' ? disasm(m[i]) : (kindAt[i] === 'data' ? m[i] : '');
+    c.title = `address ${i}: ${bin(m[i])}`;
+  });
+
+  $('stepBtn').disabled = halted || error;
+  $('runBtn').disabled = halted || error;
+  $('runBtn').textContent = timer ? 'Pause' : 'Run';
+}
+
+function load(){
+  try {
+    const r = assemble($('src').value);
+    image = r.mem; labelsAt = r.lab; kindAt = r.kind;
+    $('err').textContent = '';
+    reset();
+  } catch(e){
+    $('err').textContent = e.message;
+    error = true; stop(); setStatus('Fix the program to run it','err'); render(false);
+  }
+}
+
+function run(){
+  if (timer){ stop(); render(false); return; }
+  const rate = +$('speed').value;
+  timer = setInterval(() => { if (!step()) stop(); render(false); }, 1000 / rate);
+  render(false);
+}
+function stop(){ if (timer){ clearInterval(timer); timer = null; } }
+
+$('examples').addEventListener('change', () => { $('src').value = EXAMPLES[$('examples').value]; load(); });
+$('loadBtn').addEventListener('click', load);
+$('stepBtn').addEventListener('click', () => { stop(); step(); });
+$('runBtn').addEventListener('click', run);
+$('resetBtn').addEventListener('click', reset);
+$('speed').addEventListener('input', () => {
+  $('speedVal').textContent = $('speed').value + '/s';
+  if (timer){ stop(); run(); }
+});
+$('src').addEventListener('input', () => { $('err').textContent = 'Program changed. Press Load program to use it.'; });
+
+$('src').value = EXAMPLES.boot;
+load();
+</script>
+</body>
+</html>
