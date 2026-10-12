@@ -26,3 +26,8 @@ Each instruction is one byte: a 3-bit opcode and a 5-bit address. Memory is 32 b
 - Ring counter: 1, 2, 4 … 128
 - 6 × 7 by repeated adding (42)
 - 13 × 10 with shift-and-add (130)
+
+## Documentation
+
+- In-repo docs: [docs/](docs/index.md)
+- Wiki: [https://github.com/fitzyracing1/info/wiki](https://github.com/fitzyracing1/info/wiki)
